@@ -1,0 +1,14 @@
+需求文档v1.md
+  h_b78a316c9f6996 1-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "49e5fedcf600f97dcb24eede211f33c3b2619942",
+  "prompts": {},
+  "humans": {
+    "h_b78a316c9f6996": {
+      "author": "fengyunhao <fengyunhao@meituan.com>"
+    }
+  }
+}
