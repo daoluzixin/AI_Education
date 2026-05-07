@@ -1,0 +1,70 @@
+src/main/java/org/example/ai_educatin/entity/dto/student/StudentProfileDTO.java
+  h_b78a316c9f6996 1-55
+src/main/java/org/example/ai_educatin/entity/dto/ticket/TicketQueryDTO.java
+  h_b78a316c9f6996 1-28
+src/main/java/org/example/ai_educatin/entity/dto/user/AdminLoginDTO.java
+  h_b78a316c9f6996 1-17
+src/main/java/org/example/ai_educatin/controller/StudentController.java
+  h_b78a316c9f6996 1-102
+src/main/java/org/example/ai_educatin/service/StudentProfileService.java
+  h_b78a316c9f6996 1-36
+src/main/java/org/example/ai_educatin/service/impl/UserServiceImpl.java
+  h_b78a316c9f6996 1-167
+src/main/java/org/example/ai_educatin/entity/dto/admin/RecommendDTO.java
+  h_b78a316c9f6996 1-23
+src/main/java/org/example/ai_educatin/entity/dto/student/StudentQueryDTO.java
+  h_b78a316c9f6996 1-28
+src/main/java/org/example/ai_educatin/controller/ParentController.java
+  h_b78a316c9f6996 1-110
+src/main/java/org/example/ai_educatin/service/impl/StudentProfileServiceImpl.java
+  h_b78a316c9f6996 1-185
+src/main/java/org/example/ai_educatin/entity/dto/ticket/TicketCreateDTO.java
+  h_b78a316c9f6996 1-30
+src/main/java/org/example/ai_educatin/service/RecommendationService.java
+  h_b78a316c9f6996 1-26
+src/main/java/org/example/ai_educatin/service/impl/TicketServiceImpl.java
+  h_b78a316c9f6996 1-164
+src/main/java/org/example/ai_educatin/entity/dto/demand/DemandQueryDTO.java
+  h_b78a316c9f6996 1-28
+src/main/java/org/example/ai_educatin/service/impl/DemandServiceImpl.java
+  h_b78a316c9f6996 1-124
+src/main/java/org/example/ai_educatin/service/impl/RecommendationServiceImpl.java
+  h_b78a316c9f6996 1-107
+src/main/java/org/example/ai_educatin/entity/dto/user/StudentLoginDTO.java
+  h_b78a316c9f6996 1-25
+src/main/java/org/example/ai_educatin/entity/dto/student/SupplementDTO.java
+  h_b78a316c9f6996 1-22
+src/main/java/org/example/ai_educatin/service/impl/ReviewRecordServiceImpl.java
+  h_b78a316c9f6996 1-80
+src/main/java/org/example/ai_educatin/service/DemandService.java
+  h_b78a316c9f6996 1-37
+src/main/java/org/example/ai_educatin/entity/dto/admin/ReviewDTO.java
+  h_b78a316c9f6996 1-18
+src/main/java/org/example/ai_educatin/entity/dto/user/ParentLoginDTO.java
+  h_b78a316c9f6996 1-23
+src/main/java/org/example/ai_educatin/service/TicketService.java
+  h_b78a316c9f6996 1-49
+src/main/java/org/example/ai_educatin/entity/dto/user/SendCodeDTO.java
+  h_b78a316c9f6996 1-16
+src/main/java/org/example/ai_educatin/controller/AdminController.java
+  h_b78a316c9f6996 1-173
+src/main/java/org/example/ai_educatin/entity/dto/demand/DemandCreateDTO.java
+  h_b78a316c9f6996 1-32
+src/main/java/org/example/ai_educatin/service/ReviewRecordService.java
+  h_b78a316c9f6996 1-20
+src/main/java/org/example/ai_educatin/entity/dto/ticket/TicketReplyDTO.java
+  h_b78a316c9f6996 1-17
+src/main/java/org/example/ai_educatin/service/UserService.java
+  h_b78a316c9f6996 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "0a18320fddd861940ea8aa03974fe49ea5b32d23",
+  "prompts": {},
+  "humans": {
+    "h_b78a316c9f6996": {
+      "author": "fengyunhao <fengyunhao@meituan.com>"
+    }
+  }
+}
