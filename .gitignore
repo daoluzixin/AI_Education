@@ -12,8 +12,9 @@ target/
 # Dependencies
 frontend/node_modules/
 
-# CatPaw local
-.catpaw/
+# CatPaw local (保留 rules 目录入库)
+.catpaw/*
+!.catpaw/rules/
 
 # Logs
 *.log
