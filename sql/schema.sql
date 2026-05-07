@@ -52,6 +52,7 @@ CREATE TABLE `student_profile` (
     `certificates`      VARCHAR(2048) DEFAULT NULL            COMMENT '获奖证书URL(逗号分隔,最多5张)',
     `transcripts`       VARCHAR(1024) DEFAULT NULL            COMMENT '成绩证明URL(逗号分隔,最多3张)',
     `supplements`       VARCHAR(1024) DEFAULT NULL            COMMENT '其他补充材料URL(逗号分隔,最多3个)',
+    `hourly_rate`       VARCHAR(32)   DEFAULT NULL            COMMENT '期望时薪范围: 50-100/100-150/150-200/200+',
     `review_status`     TINYINT       NOT NULL DEFAULT 0      COMMENT '审核状态: 0-草稿(DRAFT) 1-待审核(PENDING_REVIEW) 2-通过(APPROVED) 3-驳回(REJECTED) 4-待补充(NEED_SUPPLEMENT)',
     `reject_reason`     VARCHAR(512)  DEFAULT NULL            COMMENT '驳回原因(REJECTED时填写)',
     `supplement_note`   VARCHAR(512)  DEFAULT NULL            COMMENT '需补充内容说明(NEED_SUPPLEMENT时填写)',
@@ -107,6 +108,22 @@ CREATE TABLE `demand` (
     KEY `idx_city_status` (`city`, `status`),
     KEY `idx_demand_type` (`demand_type`)
 ) ENGINE=InnoDB COMMENT='家长需求表';
+
+
+-- -----------------------------------------------------------
+-- 4.5 推荐反馈表 (记录家长对推荐结果的行为,用于匹配优化)
+-- -----------------------------------------------------------
+CREATE TABLE `recommendation_feedback` (
+    `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT '反馈ID(主键)',
+    `demand_id`       BIGINT        NOT NULL                COMMENT '关联 demand.id',
+    `student_id`      BIGINT        NOT NULL                COMMENT '关联 student_profile.id',
+    `feedback_type`   TINYINT       NOT NULL                COMMENT '反馈类型: 1-查看详情 2-发起咨询 3-确认选择 4-不满意',
+    `feedback_note`   VARCHAR(200)  DEFAULT NULL            COMMENT '反馈备注',
+    `create_time`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_demand_id` (`demand_id`),
+    KEY `idx_student_id` (`student_id`)
+) ENGINE=InnoDB COMMENT='推荐反馈表(家长行为记录,用于闭环优化)';
 
 
 -- -----------------------------------------------------------
