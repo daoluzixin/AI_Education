@@ -2,3 +2,8 @@
 
 <!-- 格式：[日期] 计划名 | 状态 | 备注 -->
 <!-- 示例：[2026-05-07] implement-demand-api | completed | 家长需求CRUD全部完成 -->
+
+[2026-05-07] v1-backend-rewrite | completed | Spring Boot 3 后端全量重写
+[2026-05-07] v2-matching-engine | completed | 规则匹配引擎实现
+[2026-05-07] v3-unit-test-harness | completed | 43 单元测试接入 Harness，R8 规则自动化回归
+[2026-05-07] v4-adversarial-testing | completed | 115 对抗测试全部通过，覆盖 7 Service × 16 业务规则

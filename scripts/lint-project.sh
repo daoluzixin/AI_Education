@@ -164,6 +164,50 @@ else
     warn "R7: sql/schema.sql 不存在"
 fi
 
+# --- R8: 单元测试必须通过 ---
+echo ""
+echo "--- R8: 单元测试 (mvn test) ---"
+export JAVA_HOME="${JAVA_HOME:-/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home}"
+if "$PROJECT_ROOT/mvnw" test -f "$PROJECT_ROOT/pom.xml" -q 2>/dev/null; then
+    pass "R8: mvn test 全部通过"
+else
+    error "R8: mvn test 失败，存在测试未通过"
+fi
+
+# --- R9: 对抗测试文档三件套完整性检查 ---
+echo ""
+echo "--- R9: 对抗测试文档完整性 ---"
+TEST_DOC_DIR="$PROJECT_ROOT/docs/test"
+MISSING_DOCS=0
+for DOC in "adversarial-dataset.md" "test-plan.md" "coverage-map.md"; do
+    if [ ! -f "$TEST_DOC_DIR/$DOC" ]; then
+        error "R9: 缺少测试文档 docs/test/$DOC"
+        MISSING_DOCS=1
+    fi
+done
+if [ $MISSING_DOCS -eq 0 ]; then
+    # 检查三件套是否包含所有已存在的 ServiceImpl 对应章节
+    if [ -d "$SRC_DIR" ]; then
+        SERVICE_IMPLS=$(find "$SRC_DIR" -name "*ServiceImpl.java" -exec basename {} .java \; 2>/dev/null | sort)
+        DATASET_CONTENT=$(cat "$TEST_DOC_DIR/adversarial-dataset.md" 2>/dev/null)
+        UNCOVERED=""
+        for SVC in $SERVICE_IMPLS; do
+            # 从 XxxServiceImpl 提取 Xxx 作为关键词
+            SVC_NAME=$(echo "$SVC" | sed 's/ServiceImpl$//')
+            if ! echo "$DATASET_CONTENT" | grep -qi "$SVC_NAME"; then
+                UNCOVERED="$UNCOVERED $SVC_NAME"
+            fi
+        done
+        if [ -n "$UNCOVERED" ]; then
+            warn "R9: 以下 Service 在对抗数据集中未找到对应章节:$UNCOVERED"
+        else
+            pass "R9: 对抗测试文档三件套完整，所有 Service 已覆盖"
+        fi
+    else
+        pass "R9: 对抗测试文档三件套存在"
+    fi
+fi
+
 # --- 汇总 ---
 echo ""
 echo "=========================================="

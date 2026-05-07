@@ -58,7 +58,28 @@
 - 新增/修改业务流程 → 同步更新 `数据流转与流程图.md`
 - 新增/修改约束规则 → 同步更新本文件
 
-## 7. Git 提交规范
+## 7. 测试约束
+
+### 基础约束
+
+- 每个 ServiceImpl 的**核心业务方法**必须有单元测试覆盖
+- 测试必须覆盖三类场景：正常路径、边界值、异常路径
+- 继承 `ServiceImpl` 的类使用 `@Spy @InjectMocks` + `doReturn().when(spy)` 模式
+- 纯委托类（不继承 ServiceImpl）使用标准 `@Mock @InjectMocks` 模式
+- **禁止** `when(spy.realMethod()).thenReturn()` — 会触发真实方法调用
+- mvn test 零失败是代码合入的前置条件（由 lint R8 自动校验）
+
+### 对抗测试纪律
+
+- 新增/修改 Service 核心方法时，**必须先更新文档三件套再编写测试**
+- 三件套路径：`docs/test/adversarial-dataset.md`、`docs/test/test-plan.md`、`docs/test/coverage-map.md`
+- 每条业务规则至少被 2 个测试用例覆盖（正常路径 + 异常路径各至少 1 条）
+- 用例 ID 格式：`<Service缩写>-<类型>-<序号>`（N=正常/B=边界/E=异常/P=权限）
+- 新建 ServiceImpl 时必须在三件套中同步新增对应章节
+- 覆盖度映射必须保持双向可追踪（业务规则→用例、用例→业务规则）
+- lint R9 自动校验三件套文档存在性
+
+## 8. Git 提交规范
 
 ```
 <type>(<scope>): <简述>
