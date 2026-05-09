@@ -1,12 +1,16 @@
 package org.example.ai_educatin.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.ai_educatin.common.enums.DemandStatus;
+import org.example.ai_educatin.common.enums.ReviewStatus;
+import org.example.ai_educatin.common.enums.TicketStatus;
+import org.example.ai_educatin.common.enums.UserRole;
 import org.example.ai_educatin.common.result.Result;
-import org.example.ai_educatin.entity.dto.admin.RecommendDTO;
 import org.example.ai_educatin.entity.dto.admin.ReviewDTO;
 import org.example.ai_educatin.entity.dto.demand.DemandQueryDTO;
 import org.example.ai_educatin.entity.dto.student.StudentQueryDTO;
@@ -14,10 +18,17 @@ import org.example.ai_educatin.entity.dto.ticket.TicketQueryDTO;
 import org.example.ai_educatin.entity.dto.ticket.TicketReplyDTO;
 import org.example.ai_educatin.entity.dto.user.AdminLoginDTO;
 import org.example.ai_educatin.entity.*;
+import org.example.ai_educatin.mapper.DemandMapper;
+import org.example.ai_educatin.mapper.StudentProfileMapper;
+import org.example.ai_educatin.mapper.TicketMapper;
+import org.example.ai_educatin.mapper.UserMapper;
 import org.example.ai_educatin.service.*;
 import org.example.ai_educatin.vo.CandidateVO;
+import org.example.ai_educatin.vo.DashboardVO;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -36,6 +47,10 @@ public class AdminController {
     private final RecommendationService recommendationService;
     private final MatchingService matchingService;
     private final TicketService ticketService;
+    private final UserMapper userMapper;
+    private final DemandMapper demandMapper;
+    private final StudentProfileMapper studentProfileMapper;
+    private final TicketMapper ticketMapper;
 
     // ==================== 认证相关 ====================
 
@@ -99,14 +114,6 @@ public class AdminController {
     @PostMapping("/demand/{demandId}/start-matching")
     public Result<Void> startMatching(@PathVariable Long demandId) {
         demandService.startMatching(demandId);
-        return Result.success();
-    }
-
-    @Operation(summary = "配置推荐")
-    @PostMapping("/demand/recommend")
-    public Result<Void> configureRecommendation(@RequestHeader("X-User-Id") Long operatorId,
-                                                @RequestBody @Valid RecommendDTO dto) {
-        recommendationService.configureRecommendation(dto, operatorId);
         return Result.success();
     }
 
@@ -179,5 +186,49 @@ public class AdminController {
     public Result<Void> closeTicket(@PathVariable Long ticketId) {
         ticketService.closeTicket(ticketId);
         return Result.success();
+    }
+
+    // ==================== 数据概览 ====================
+
+    @Operation(summary = "数据概览（Dashboard）")
+    @GetMapping("/dashboard")
+    public Result<DashboardVO> dashboard() {
+        DashboardVO vo = new DashboardVO();
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+
+        // 今日新增需求数
+        vo.setTodayNewDemands(demandMapper.selectCount(
+                new LambdaQueryWrapper<Demand>().ge(Demand::getCreateTime, todayStart)));
+
+        // 待处理需求数
+        vo.setPendingDemands(demandMapper.selectCount(
+                new LambdaQueryWrapper<Demand>().eq(Demand::getStatus, DemandStatus.PENDING.getCode())));
+
+        // 今日新增报名数（学生提交审核）
+        vo.setTodayNewStudents(studentProfileMapper.selectCount(
+                new LambdaQueryWrapper<StudentProfile>()
+                        .ge(StudentProfile::getCreateTime, todayStart)
+                        .ne(StudentProfile::getReviewStatus, ReviewStatus.DRAFT.getCode())));
+
+        // 待审核学生数
+        vo.setPendingReviewStudents(studentProfileMapper.selectCount(
+                new LambdaQueryWrapper<StudentProfile>()
+                        .eq(StudentProfile::getReviewStatus, ReviewStatus.PENDING_REVIEW.getCode())));
+
+        // 待处理工单数
+        vo.setPendingTickets(ticketMapper.selectCount(
+                new LambdaQueryWrapper<Ticket>().eq(Ticket::getStatus, TicketStatus.PENDING.getCode())));
+
+        // 累计注册家长数
+        vo.setTotalParents(userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.PARENT.getCode())));
+
+        // 累计入驻学生数（审核通过）
+        vo.setTotalApprovedStudents(studentProfileMapper.selectCount(
+                new LambdaQueryWrapper<StudentProfile>()
+                        .eq(StudentProfile::getReviewStatus, ReviewStatus.APPROVED.getCode())));
+
+        return Result.success(vo);
     }
 }

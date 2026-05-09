@@ -143,6 +143,12 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
             wrapper.and(w -> w.like(StudentProfile::getRealName, dto.getKeyword())
                     .or().like(StudentProfile::getSchoolName, dto.getKeyword()));
         }
+        if (dto.getStartTime() != null) {
+            wrapper.ge(StudentProfile::getCreateTime, dto.getStartTime());
+        }
+        if (dto.getEndTime() != null) {
+            wrapper.le(StudentProfile::getCreateTime, dto.getEndTime());
+        }
 
         wrapper.orderByDesc(StudentProfile::getCreateTime);
         return page(page, wrapper);

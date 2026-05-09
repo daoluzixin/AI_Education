@@ -4,6 +4,9 @@ import org.example.ai_educatin.common.enums.DemandStatus;
 import org.example.ai_educatin.common.exception.BusinessException;
 import org.example.ai_educatin.entity.Demand;
 import org.example.ai_educatin.mapper.DemandMapper;
+import org.example.ai_educatin.mapper.RecommendationMapper;
+import org.example.ai_educatin.service.MatchingService;
+import org.example.ai_educatin.vo.CandidateVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,10 +17,12 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -25,10 +30,11 @@ import static org.mockito.Mockito.*;
  *
  * 核心验证：需求状态流转合法性（对标 03-constraints.md 第4节）
  * 状态机规则：
- * - PENDING → MATCHING（唯一合法前进路径）
+ * - PENDING → MATCHING(瞬时) → RECOMMENDED（自动匹配成功）
+ * - PENDING / MATCHING → 可触发匹配（MATCHING 用于重试场景）
  * - 任意状态 → CLOSED（唯一例外）
  * - 已 CLOSED 不可再次关闭
- * - MATCHING 不可直接跳到 PENDING（禁止回退）
+ * - RECOMMENDED / CLOSED 不可开始匹配
  *
  * 注意：DemandServiceImpl 继承 ServiceImpl，getById/updateById 走的是 baseMapper。
  * 使用 @Spy 让实际逻辑执行，同时 mock 掉 baseMapper 的数据库操作。
@@ -41,6 +47,12 @@ class DemandServiceImplTest {
 
     @Mock
     private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private MatchingService matchingService;
+
+    @Mock
+    private RecommendationMapper recommendationMapper;
 
     @Spy
     @InjectMocks
@@ -74,23 +86,49 @@ class DemandServiceImplTest {
     class StartMatchingCases {
 
         @Test
-        @DisplayName("PENDING → MATCHING：合法转换")
-        void pending_to_matching_success() {
+        @DisplayName("PENDING → 自动匹配成功 → RECOMMENDED")
+        void pending_autoMatch_success() {
             doReturn(pendingDemand).when(demandService).getById(1L);
             doReturn(true).when(demandService).updateById(any(Demand.class));
+
+            CandidateVO candidate = new CandidateVO();
+            candidate.setStudentId(100L);
+            when(matchingService.findCandidates(eq(1L), anyInt()))
+                    .thenReturn(List.of(candidate));
+            when(recommendationMapper.insert(any())).thenReturn(1);
+
+            assertDoesNotThrow(() -> demandService.startMatching(1L));
+            assertEquals(DemandStatus.RECOMMENDED.getCode(), pendingDemand.getStatus());
+        }
+
+        @Test
+        @DisplayName("PENDING → 自动匹配无候选 → 保持 MATCHING")
+        void pending_autoMatch_noCandidates_stayMatching() {
+            doReturn(pendingDemand).when(demandService).getById(1L);
+            doReturn(true).when(demandService).updateById(any(Demand.class));
+
+            when(matchingService.findCandidates(eq(1L), anyInt()))
+                    .thenReturn(Collections.emptyList());
 
             assertDoesNotThrow(() -> demandService.startMatching(1L));
             assertEquals(DemandStatus.MATCHING.getCode(), pendingDemand.getStatus());
         }
 
         @Test
-        @DisplayName("MATCHING → MATCHING：非法（已经是 MATCHING 状态）")
-        void matching_to_matching_throws() {
+        @DisplayName("MATCHING → 重试匹配：合法（无候选时可重试）")
+        void matching_retry_success() {
             doReturn(matchingDemand).when(demandService).getById(2L);
+            doReturn(true).when(demandService).updateById(any(Demand.class));
 
-            BusinessException ex = assertThrows(BusinessException.class,
-                    () -> demandService.startMatching(2L));
-            assertEquals(400, ex.getCode());
+            CandidateVO candidate = new CandidateVO();
+            candidate.setStudentId(200L);
+            when(matchingService.findCandidates(eq(2L), anyInt()))
+                    .thenReturn(List.of(candidate));
+            when(recommendationMapper.delete(any())).thenReturn(0);
+            when(recommendationMapper.insert(any())).thenReturn(1);
+
+            assertDoesNotThrow(() -> demandService.startMatching(2L));
+            assertEquals(DemandStatus.RECOMMENDED.getCode(), matchingDemand.getStatus());
         }
 
         @Test

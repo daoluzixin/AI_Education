@@ -21,6 +21,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,10 +61,17 @@ class UserServiceImplTest {
 
     private static final String VERIFY_CODE_PREFIX = "verify:code:";
     private static final String VERIFY_LIMIT_PREFIX = "verify:limit:";
+    private static final String VERIFY_ERROR_COUNT_PREFIX = "verify:error:";
+    private static final String VERIFY_LOCK_PREFIX = "verify:lock:";
 
     @BeforeEach
     void setUp() {
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        // 默认：验证码锁定 key 不存在
+        lenient().when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        // 默认：错误计数递增返回 1（首次错误）
+        lenient().when(valueOperations.increment(anyString())).thenReturn(1L);
+        lenient().when(redisTemplate.expire(anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
     }
 
     // ==================== Helper Methods ====================
@@ -177,10 +186,11 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("U-P-005: 验证码错误 → 400 '验证码错误'")
+        @DisplayName("U-P-005: 验证码错误 → 400 '验证码错误，还剩N次机会'")
         void shouldThrowWhenWrongVerifyCode() {
             String phone = "13800005555";
             when(valueOperations.get(VERIFY_CODE_PREFIX + phone)).thenReturn("999999");
+            when(valueOperations.increment(VERIFY_ERROR_COUNT_PREFIX + phone)).thenReturn(1L);
 
             ParentLoginDTO dto = buildParentLoginDTO(phone, "000000", null);
 
@@ -189,7 +199,8 @@ class UserServiceImplTest {
                     .satisfies(ex -> {
                         BusinessException bex = (BusinessException) ex;
                         assertThat(bex.getCode()).isEqualTo(400);
-                        assertThat(bex.getMessage()).isEqualTo("验证码错误");
+                        assertThat(bex.getMessage()).contains("验证码错误");
+                        assertThat(bex.getMessage()).contains("次机会");
                     });
         }
 
@@ -337,11 +348,12 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("U-S-005: 验证码错误 → 400 '验证码错误'")
+        @DisplayName("U-S-005: 验证码错误 → 400 '验证码错误，还剩N次机会'")
         void shouldThrowWhenWrongVerifyCode() {
             String phone = "13900005555";
             String email = "test@pku.edu.cn";
             when(valueOperations.get(VERIFY_CODE_PREFIX + phone)).thenReturn("999999");
+            when(valueOperations.increment(VERIFY_ERROR_COUNT_PREFIX + phone)).thenReturn(1L);
 
             StudentLoginDTO dto = buildStudentLoginDTO(phone, email, "000000");
 
@@ -350,7 +362,8 @@ class UserServiceImplTest {
                     .satisfies(ex -> {
                         BusinessException bex = (BusinessException) ex;
                         assertThat(bex.getCode()).isEqualTo(400);
-                        assertThat(bex.getMessage()).isEqualTo("验证码错误");
+                        assertThat(bex.getMessage()).contains("验证码错误");
+                        assertThat(bex.getMessage()).contains("次机会");
                     });
         }
 

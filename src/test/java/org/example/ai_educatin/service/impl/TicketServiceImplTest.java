@@ -228,23 +228,24 @@ class TicketServiceImplTest {
     class ReplyTicketCases {
 
         @Test
-        @DisplayName("T-R-001: PROCESSING 工单 -> 成功添加 TicketReply")
+        @DisplayName("T-R-001: PROCESSING 工单 -> 成功添加 TicketReply，状态变为 RESOLVED")
         void processingTicket_replySuccess() {
             Ticket processingTicket = buildTicket(TICKET_ID, TicketStatus.PROCESSING);
             doReturn(processingTicket).when(ticketService).getById(TICKET_ID);
             when(ticketReplyMapper.insert(any(TicketReply.class))).thenReturn(1);
+            doReturn(true).when(ticketService).updateById(any(Ticket.class));
 
             TicketReplyDTO dto = buildReplyDTO("已处理您的问题", null);
 
             assertDoesNotThrow(() ->
                     ticketService.replyTicket(TICKET_ID, HANDLER_ID, REPLIER_NAME, dto));
             verify(ticketReplyMapper, times(1)).insert(any(TicketReply.class));
-            // 状态保持 PROCESSING，不变
-            assertEquals(TicketStatus.PROCESSING.getCode(), processingTicket.getStatus());
+            // 回复后状态变为 RESOLVED
+            assertEquals(TicketStatus.RESOLVED.getCode(), processingTicket.getStatus());
         }
 
         @Test
-        @DisplayName("T-R-002: PENDING 工单 -> 自动接单(->PROCESSING) + 添加回复")
+        @DisplayName("T-R-002: PENDING 工单 -> 自动接单 + 回复后状态变为 RESOLVED")
         void pendingTicket_autoAcceptAndReply() {
             Ticket pendingTicket = buildTicket(TICKET_ID, TicketStatus.PENDING);
             doReturn(pendingTicket).when(ticketService).getById(TICKET_ID);
@@ -255,7 +256,8 @@ class TicketServiceImplTest {
 
             assertDoesNotThrow(() ->
                     ticketService.replyTicket(TICKET_ID, HANDLER_ID, REPLIER_NAME, dto));
-            assertEquals(TicketStatus.PROCESSING.getCode(), pendingTicket.getStatus());
+            // 回复后状态变为 RESOLVED（而非仅 PROCESSING）
+            assertEquals(TicketStatus.RESOLVED.getCode(), pendingTicket.getStatus());
             assertEquals(HANDLER_ID, pendingTicket.getHandlerId());
             verify(ticketReplyMapper, times(1)).insert(any(TicketReply.class));
         }

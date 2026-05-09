@@ -29,8 +29,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private static final String VERIFY_CODE_PREFIX = "verify:code:";
     private static final String VERIFY_LIMIT_PREFIX = "verify:limit:";
+    private static final String VERIFY_ERROR_COUNT_PREFIX = "verify:error:";
+    private static final String VERIFY_LOCK_PREFIX = "verify:lock:";
+    private static final String ADMIN_ERROR_COUNT_PREFIX = "admin:error:";
+    private static final String ADMIN_LOCK_PREFIX = "admin:lock:";
     private static final long CODE_EXPIRE_MINUTES = 5;
     private static final long SEND_INTERVAL_SECONDS = 60;
+    private static final int MAX_VERIFY_ERROR_COUNT = 5;
+    private static final long VERIFY_LOCK_MINUTES = 15;
+    private static final int MAX_ADMIN_ERROR_COUNT = 5;
+    private static final long ADMIN_LOCK_MINUTES = 30;
 
     /** 用户状态: 正常 */
     private static final int USER_STATUS_ACTIVE = 1;
@@ -99,17 +107,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User adminLogin(AdminLoginDTO dto) {
+        // 检查是否被锁定
+        String lockKey = ADMIN_LOCK_PREFIX + dto.getPhone();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new BusinessException(403, "账号已被锁定，请" + ADMIN_LOCK_MINUTES + "分钟后重试");
+        }
+
         User user = getOne(new LambdaQueryWrapper<User>()
                 .eq(User::getPhone, dto.getPhone())
                 .eq(User::getRole, UserRole.ADMIN.getCode()));
 
         if (user == null) {
+            incrementAdminErrorCount(dto.getPhone());
             throw new BusinessException(401, "账号或密码错误");
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+            incrementAdminErrorCount(dto.getPhone());
             throw new BusinessException(401, "账号或密码错误");
         }
+
+        // 登录成功，清除错误计数
+        redisTemplate.delete(ADMIN_ERROR_COUNT_PREFIX + dto.getPhone());
 
         checkUserStatus(user);
         return user;
@@ -138,9 +157,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 校验验证码
+     * 校验验证码（含错误次数限制：连续输错5次锁定15分钟）
      */
     private void verifyCode(String phone, String inputCode) {
+        // 检查是否被锁定
+        String lockKey = VERIFY_LOCK_PREFIX + phone;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new BusinessException(403, "验证码错误次数过多，请" + VERIFY_LOCK_MINUTES + "分钟后重试");
+        }
+
         String codeKey = VERIFY_CODE_PREFIX + phone;
         String cachedCode = redisTemplate.opsForValue().get(codeKey);
 
@@ -149,11 +174,45 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         if (!cachedCode.equals(inputCode)) {
-            throw new BusinessException(400, "验证码错误");
+            // 递增错误计数
+            String errorKey = VERIFY_ERROR_COUNT_PREFIX + phone;
+            Long errorCount = redisTemplate.opsForValue().increment(errorKey);
+            if (errorCount != null && errorCount == 1L) {
+                // 首次错误，设置过期时间与验证码有效期一致
+                redisTemplate.expire(errorKey, CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            }
+            if (errorCount != null && errorCount >= MAX_VERIFY_ERROR_COUNT) {
+                // 达到上限，锁定并清除错误计数和验证码
+                redisTemplate.opsForValue().set(lockKey, "1", VERIFY_LOCK_MINUTES, TimeUnit.MINUTES);
+                redisTemplate.delete(errorKey);
+                redisTemplate.delete(codeKey);
+                throw new BusinessException(403, "验证码错误次数过多，请" + VERIFY_LOCK_MINUTES + "分钟后重试");
+            }
+            throw new BusinessException(400, "验证码错误，还剩" + (MAX_VERIFY_ERROR_COUNT - errorCount) + "次机会");
         }
 
-        // 验证成功后删除
+        // 验证成功，清除错误计数和验证码
+        redisTemplate.delete(VERIFY_ERROR_COUNT_PREFIX + phone);
         redisTemplate.delete(codeKey);
+    }
+
+    /**
+     * 递增管理员登录错误次数（达到上限则锁定30分钟）
+     */
+    private void incrementAdminErrorCount(String phone) {
+        String errorKey = ADMIN_ERROR_COUNT_PREFIX + phone;
+        Long errorCount = redisTemplate.opsForValue().increment(errorKey);
+        if (errorCount != null && errorCount == 1L) {
+            // 首次错误，设置30分钟窗口期
+            redisTemplate.expire(errorKey, ADMIN_LOCK_MINUTES, TimeUnit.MINUTES);
+        }
+        if (errorCount != null && errorCount >= MAX_ADMIN_ERROR_COUNT) {
+            // 达到上限，锁定账号
+            String lockKey = ADMIN_LOCK_PREFIX + phone;
+            redisTemplate.opsForValue().set(lockKey, "1", ADMIN_LOCK_MINUTES, TimeUnit.MINUTES);
+            redisTemplate.delete(errorKey);
+            throw new BusinessException(403, "连续输错密码" + MAX_ADMIN_ERROR_COUNT + "次，账号已锁定" + ADMIN_LOCK_MINUTES + "分钟");
+        }
     }
 
     /**

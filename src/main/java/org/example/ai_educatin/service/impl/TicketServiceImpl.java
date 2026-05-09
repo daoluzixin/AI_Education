@@ -72,6 +72,12 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
             wrapper.and(w -> w.like(Ticket::getTicketNo, dto.getKeyword())
                     .or().like(Ticket::getContactPhone, dto.getKeyword()));
         }
+        if (dto.getStartTime() != null) {
+            wrapper.ge(Ticket::getCreateTime, dto.getStartTime());
+        }
+        if (dto.getEndTime() != null) {
+            wrapper.le(Ticket::getCreateTime, dto.getEndTime());
+        }
 
         wrapper.orderByDesc(Ticket::getCreateTime);
         return page(page, wrapper);
@@ -116,12 +122,12 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         reply.setAttachments(dto.getAttachments());
         ticketReplyMapper.insert(reply);
 
-        // 如果是待处理状态，自动接单并进入处理中
+        // 状态流转：PENDING → 自动接单 + RESOLVED；PROCESSING → RESOLVED
         if (current == TicketStatus.PENDING) {
-            ticket.setStatus(TicketStatus.PROCESSING.getCode());
             ticket.setHandlerId(replierId);
-            updateById(ticket);
         }
+        ticket.setStatus(TicketStatus.RESOLVED.getCode());
+        updateById(ticket);
     }
 
     @Override

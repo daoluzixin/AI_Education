@@ -39,7 +39,7 @@
 
 任何状态变更必须在 Service 层校验合法性，不允许跳跃：
 
-- 需求状态只能**前进**（PENDING→MATCHING→RECOMMENDED），唯一例外是任意状态可→CLOSED
+- 需求状态只能**前进**（PENDING→MATCHING(瞬时)→RECOMMENDED），开始匹配后系统自动完成推荐，MATCHING 为事务内瞬时态；无候选时保持 MATCHING 允许重试；唯一例外是任意状态可→CLOSED
 - 审核状态 REJECTED→DRAFT 和 NEED_SUPPLEMENT→PENDING_REVIEW 是**回退**允许的唯一路径
 - 工单状态只能前进，PROCESSING 可直接→CLOSED（无效工单场景）
 

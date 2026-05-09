@@ -8,9 +8,9 @@ import org.example.ai_educatin.common.exception.BusinessException;
 import org.example.ai_educatin.entity.Demand;
 import org.example.ai_educatin.entity.Recommendation;
 import org.example.ai_educatin.entity.StudentProfile;
+import org.example.ai_educatin.mapper.DemandMapper;
 import org.example.ai_educatin.mapper.RecommendationMapper;
 import org.example.ai_educatin.mapper.StudentProfileMapper;
-import org.example.ai_educatin.service.DemandService;
 import org.example.ai_educatin.vo.CandidateVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 class MatchingServiceImplTest {
 
     @Mock
-    private DemandService demandService;
+    private DemandMapper demandMapper;
 
     @Mock
     private StudentProfileMapper studentProfileMapper;
@@ -158,7 +158,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("需求不存在 → 抛 404 BusinessException")
         void demandNotFound_throws404() {
-            when(demandService.getById(999L)).thenReturn(null);
+            when(demandMapper.selectById(999L)).thenReturn(null);
 
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> matchingService.findCandidates(999L, 10));
@@ -171,7 +171,7 @@ class MatchingServiceImplTest {
             Demand closed = new Demand();
             closed.setId(2L);
             closed.setStatus(DemandStatus.CLOSED.getCode());
-            when(demandService.getById(2L)).thenReturn(closed);
+            when(demandMapper.selectById(2L)).thenReturn(closed);
 
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> matchingService.findCandidates(2L, 10));
@@ -184,7 +184,7 @@ class MatchingServiceImplTest {
             Demand recommended = new Demand();
             recommended.setId(3L);
             recommended.setStatus(DemandStatus.RECOMMENDED.getCode());
-            when(demandService.getById(3L)).thenReturn(recommended);
+            when(demandMapper.selectById(3L)).thenReturn(recommended);
 
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> matchingService.findCandidates(3L, 10));
@@ -194,7 +194,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("同城无候选学生 → 返回空列表而非 null")
         void noCandidatesInCity_returnsEmptyList() {
-            when(demandService.getById(1L)).thenReturn(mockDemand);
+            when(demandMapper.selectById(1L)).thenReturn(mockDemand);
             when(studentProfileMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(Collections.emptyList());
 
@@ -323,7 +323,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("5 个以上活跃推荐 → 接单余量得 0 分")
         void overSaturation_zeroScore() {
-            when(demandService.getById(1L)).thenReturn(mockDemand);
+            when(demandMapper.selectById(1L)).thenReturn(mockDemand);
             when(studentProfileMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(Arrays.asList(student985));
             when(subjectMappingConfig.getSubjectsForDemandType("SUBJECT_TUTOR"))
@@ -347,7 +347,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("饱和度高的学生排名被低饱和度学生超越")
         void highSaturation_rankedLower() {
-            when(demandService.getById(1L)).thenReturn(mockDemand);
+            when(demandMapper.selectById(1L)).thenReturn(mockDemand);
             // 两个相同实力学生，只有饱和度不同
             StudentProfile freshStudent = buildStudent(104L, "S004", "赵六", "北京大学",
                     "数学,物理,化学", "耐心,认真负责,有经验", "100-150");
@@ -383,7 +383,7 @@ class MatchingServiceImplTest {
         @DisplayName("OTHER 类型 → 科目匹配给基础分 15（满分的一半）")
         void otherType_baseSubjectScore() {
             mockDemand.setDemandType("OTHER");
-            when(demandService.getById(1L)).thenReturn(mockDemand);
+            when(demandMapper.selectById(1L)).thenReturn(mockDemand);
             when(studentProfileMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(Arrays.asList(student985));
             when(recommendationMapper.selectList(any(LambdaQueryWrapper.class)))
@@ -401,7 +401,7 @@ class MatchingServiceImplTest {
     // ==================== 辅助方法 ====================
 
     private void setupStandardMocks(List<StudentProfile> candidates) {
-        when(demandService.getById(1L)).thenReturn(mockDemand);
+        when(demandMapper.selectById(1L)).thenReturn(mockDemand);
         when(studentProfileMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(candidates);
         when(recommendationMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(Collections.emptyList());

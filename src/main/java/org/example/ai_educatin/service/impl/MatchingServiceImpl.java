@@ -10,9 +10,9 @@ import org.example.ai_educatin.common.exception.BusinessException;
 import org.example.ai_educatin.entity.Demand;
 import org.example.ai_educatin.entity.Recommendation;
 import org.example.ai_educatin.entity.StudentProfile;
+import org.example.ai_educatin.mapper.DemandMapper;
 import org.example.ai_educatin.mapper.RecommendationMapper;
 import org.example.ai_educatin.mapper.StudentProfileMapper;
-import org.example.ai_educatin.service.DemandService;
 import org.example.ai_educatin.service.MatchingService;
 import org.example.ai_educatin.vo.CandidateVO;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MatchingServiceImpl implements MatchingService {
 
-    private final DemandService demandService;
+    private final DemandMapper demandMapper;
     private final StudentProfileMapper studentProfileMapper;
     private final RecommendationMapper recommendationMapper;
     private final SubjectMappingConfig subjectMappingConfig;
@@ -75,7 +75,7 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     public List<CandidateVO> findCandidates(Long demandId, int limit) {
         // 1. 获取需求详情
-        Demand demand = demandService.getById(demandId);
+        Demand demand = demandMapper.selectById(demandId);
         if (demand == null) {
             throw new BusinessException(404, "需求不存在");
         }
